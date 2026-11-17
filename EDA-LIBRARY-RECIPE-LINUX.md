@@ -1,31 +1,29 @@
 # Recipe: set up the EDA library, KiCad and LTspice on Linux (Omarchy / Arch)
 
-Written 2026-11-17 for an agent to follow on a fresh Omarchy machine. It is a library of reference source and reference designs, a librarian agent that catalogues it, a
-skill to navigate it, and a working toolchain proven end to end.
+Written 2026-11-17 for an agent to follow on a fresh Omarchy machine. It assumes nothing about
+what else is on that machine. It sets up a library of reference source and reference designs, a
+librarian agent that catalogues it, a skill to navigate it, and a working toolchain proven end
+to end.
 
-This recipe has **not been run**. It was assembled on a Mac from package, repo and file checks
-made on 2026-11-17; where a step rests on something read but not executed, it says so. Disk
+This recipe has **not been run**. It was assembled from package and repo checks made on
+2026-11-17; where a step rests on something read but not executed, it says so. Disk
 space is not a constraint on the target machine.
 
-## What the owner does with these tools
+## The kind of work this setup serves
 
-Found on the Mac, so the checks below test the work that matters:
+The checks below are chosen to exercise this work:
 
-- **KiCad** schematics and PCBs: `egkelados/electrical/hardware/initial_concept/FPGAthara` (saved
-  by KiCad 8, has a PCB) and `egkelados/electrical/hardware/fender_cyclone/second_attempt`
-  (saved by KiCad 9, schematic only). `egkelados` is not a git repo.
-- **LTspice** simulations of guitar electronics: adaptive filters, an LM13700 low-pass, 555-based
-  class-D and PWM stages, a pickup mixer. They sit in `~/Desktop/Need to review/aaaAAAaaaa/κιθάρα/kithara kicad stuff`
-  (181 MB, not in git).
-- **Plain SPICE** decks (`.sp`) from analog coursework in `FPGA-sigmadelta-driver/_resources/analog`.
-- **Planned:** the `next-gen-guitar` design keeps one KiCad project and one LTspice deck per board,
-  and pulls results out automatically with `kicad-cli` and LTspice `.meas` statements.
-- The Mac runs KiCad 10.0.0 and LTspice 17.2.4. KiCad has only the default library tables and
-  LTspice has no added models, so there are no custom libraries to migrate.
+- **KiCad** schematics and PCBs, including files saved by older KiCad versions (8 and 9).
+- **LTspice** simulations of analog audio and guitar electronics: active and adaptive filters,
+  OTA (LM13700) circuits, 555-based class-D and PWM stages, pickup mixers.
+- **Plain SPICE** decks (`.sp`), including older HSPICE-style coursework decks.
+- **FPGA boards** such as the iCEBreaker, and **H-bridge power stages**.
+- **A per-board workflow:** one KiCad project and one LTspice deck per board, with results pulled
+  out automatically by `kicad-cli` and LTspice `.meas` statements.
 
 ## What "done" means
 
-1. `~/Projects/eda-library` holds 47 shallow reference clones listed in `manifest.tsv`, with
+1. The library directory (`$LIB`, chosen in Phase 1) holds 47 shallow reference clones listed in `manifest.tsv`, with
    `sync.sh` and a catalogue `INDEX.md`.
 2. KiCad 10 with its symbol, footprint, 3D and demo libraries, ngspice and KiKit are installed
    from the official repos. LTspice runs under Wine from the AUR package. spicelib is in a
@@ -38,8 +36,7 @@ Found on the Mac, so the checks below test the work that matters:
 5. `kicad-cli` runs ERC, DRC, netlist, BOM and Gerber export on a KiCad demo project.
 6. The `eda-librarian` agent definition and the `eda-library` skill are installed, and the
    skill's "Running things" section states only what was verified on this machine.
-7. `~/Projects/eda-library/SETUP-REPORT.md` records what was run, what was seen and what was not
-   verified.
+7. `$LIB/SETUP-REPORT.md` records what was run, what was seen and what was not verified.
 
 ## Ground rules
 
@@ -65,7 +62,7 @@ Record the output of each in the report:
 uname -m; cat /etc/os-release
 echo "$SHELL"; echo "$XDG_SESSION_TYPE"
 for t in git curl jq python3 wine yay paru pi kicad kicad-cli ngspice ltspice; do printf '%s: ' "$t"; command -v "$t" || echo missing; done
-export LIB="$HOME/Projects/eda-library"
+export LIB="${LIB:-$HOME/eda-library}"    # ask the owner where the library should live; this is only a default
 ````
 
 If any of KiCad, ngspice, Wine or LTspice is already installed, record its version and where it
@@ -73,7 +70,7 @@ came from (`pacman -Qo <path>`). Do not remove anything; tell the owner.
 
 `git`, `curl` and `jq` are needed now: `sudo pacman -S --needed git curl jq`.
 
-This recipe assumes the agent harness is `pi` with the `pi-subagents` package, as on the Mac.
+This recipe assumes the agent harness is `pi` with the `pi-subagents` package.
 If it is something else, put the skill and the agent definition wherever that harness reads
 them and say so in the report.
 
@@ -202,8 +199,8 @@ Codeberg and source.mnt.re):
   complete absolute paths"), and `ai_ref/FAQ-AND-TIPS.md` covers running under Wine.
 - **`awesome-kicad-projects`** is a curated list of 57 production-grade KiCad projects
   (CC-BY-4.0). It is a list of links, not the designs; add the ones a task needs to the manifest.
-- The `kicad-demos` package also includes an ECC83 valve amplifier, which the owner had a copy of
-  on the Mac, and LTspice ships its own example circuits.
+- The `kicad-demos` package also includes an ECC83 valve amplifier, and LTspice ships its own
+  example circuits.
 
 ## Phase 3. Catalogue the library
 
@@ -214,7 +211,7 @@ mkdir -p ~/.pi/agent/agents
 cat > ~/.pi/agent/agents/eda-librarian.md <<'AGENT'
 ---
 name: eda-librarian
-description: Builds and refreshes the electronics design (EDA) source library at ~/Projects/eda-library by cloning the repos in its manifest and writing the catalogue INDEX.md.
+description: Builds and refreshes the electronics design (EDA) source library at __LIB__ by cloning the repos in its manifest and writing the catalogue INDEX.md.
 tools: read, bash, write, edit
 model: anthropic/claude-sonnet-5-5
 thinking: medium
@@ -336,7 +333,8 @@ grep -c 'not found' INDEX.md
 ````
 
 Spot-check five entries against their clones yourself, including the facts at the end of
-Phase 2. On the CAD library, five entries needed correcting by hand; expect the same here.
+Phase 2. In a trial run of the CAD library, five entries needed correcting by hand; expect the
+same here.
 
 ## Phase 4. Install the tools
 
@@ -390,8 +388,8 @@ find ~/.local/share/wineprefixes/ltspice -maxdepth 7 -type d -name lib -path '*L
 spicelib's README says to install LTspice's libraries through Settings, Operation tab, "Model
 Update". If the `lib` directory is missing or empty, ask the owner to do that once in the GUI.
 
-The Mac had LTspice 17.2.4; this installs 26.0.2. Whether files saved by one open cleanly in the
-other was not checked. Phase 6 tests it on the owner's files.
+This installs LTspice 26.0.2. Whether files saved by older versions (such as 17.x) open cleanly
+was not checked; Phase 6 tests it on any older files the owner provides.
 
 ### 4c. spicelib in a virtual environment
 
@@ -475,7 +473,7 @@ pacman -Ql kicad-demos | grep -E '\.kicad_pro$' | head -20      # pick a demo th
 ````
 
 Copy one demo with both a schematic and a PCB (the ECC83 amplifier if present) to
-`/tmp/eda-check/demo`, then run the extraction the owner's `next-gen-guitar` design relies on:
+`/tmp/eda-check/demo`, then run the extraction a per-board workflow relies on:
 
 ````bash
 cd /tmp/eda-check/demo
@@ -571,23 +569,20 @@ ltspice &      # then open /tmp/eda-check/rc.cir and run it from the GUI
 
 If one misbehaves, record the error. Do not change system display settings; report it.
 
-## Phase 6. The owner's projects (if present)
+## Phase 6. Existing projects (only if the owner points to some)
 
-Only if the owner has copied their projects to this machine. Ask where they are. Work on copies
-in `/tmp/eda-owner/`; never in the originals.
+If the owner names existing design files on this machine, test them. Work on copies in
+`/tmp/eda-owner/`; never in the originals.
 
-- **KiCad:** for `FPGAthara` (KiCad 8 files, with PCB) and `second_attempt` (KiCad 9,
-  schematic only), run the 5b commands that apply. Record whether `kicad-cli` reads the older
-  files without complaint. `FPGAthara` has its own `sym-lib-table`; record any symbol it cannot
+- **KiCad:** run the 5b commands that apply. Record whether `kicad-cli` reads files saved by
+  older KiCad versions without complaint, and any symbol a project's own `sym-lib-table` cannot
   resolve.
-- **LTspice:** run `guitar_pickup_mixer.asc` and one 555 class-D file in batch mode as in 5a.
-  Record whether LTspice 26 accepts files saved by 17.2.4, and any missing models (the
-  `LM13700` and `NE555` files depend on models the owner may have added on the Mac; check with
-  `file` and `iconv` as in 5a before grepping). Then put `guitar_pickup_mixer.asc` through the
-  5c second-engine route and record how closely ngspice agrees.
-- **SPICE coursework:** run one `.sp` from `FPGA-sigmadelta-driver/_resources/analog` with
-  `ngspice -b`. These are old university decks and may use HSPICE-only syntax; record what fails
-  rather than fixing it.
+- **LTspice:** run the files in batch mode as in 5a. Record whether LTspice 26 accepts files
+  saved by older versions, and any missing models (OTA and 555 circuits often depend on models
+  added by hand; check with `file` and `iconv` as in 5a before grepping). Then put one of them
+  through the 5c second-engine route and record how closely ngspice agrees.
+- **SPICE decks:** run one `.sp` with `ngspice -b`. Older coursework decks may use HSPICE-only
+  syntax; record what fails rather than fixing it.
 
 These projects are the owner's. Report failures; do not modify them.
 
@@ -598,7 +593,7 @@ mkdir -p ~/.pi/agent/skills/eda-library
 cat > ~/.pi/agent/skills/eda-library/SKILL.md <<'SKILL'
 ---
 name: eda-library
-description: Navigate the local electronics design (EDA) library at ~/Projects/eda-library (47 repos - KiCad source, libraries and docs, KiKit, KiBot, InteractiveHtmlBom, Freerouting, JLCPCB and EasyEDA tools, SKiDL, atopile, ngspice, Qucs-S, Xyce, spicelib, PyLTSpice, Analog's LTspice reference, SPICE model libraries, Horizon, LibrePCB, lepton-eda, part libraries, open hardware reference designs, guitar pedal, Eurorack and power-stage collections, and LTspice example circuits) together with the installed KiCad 10, ngspice and LTspice (under Wine). Use when drawing a schematic, laying out a PCB, choosing parts, symbols or footprints, simulating a circuit in ngspice or LTspice, cross-checking an LTspice result on ngspice, extracting results with kicad-cli or .meas, producing fabrication files, or looking for a reference circuit.
+description: Navigate the local electronics design (EDA) library at __LIB__ (47 repos - KiCad source, libraries and docs, KiKit, KiBot, InteractiveHtmlBom, Freerouting, JLCPCB and EasyEDA tools, SKiDL, atopile, ngspice, Qucs-S, Xyce, spicelib, PyLTSpice, Analog's LTspice reference, SPICE model libraries, Horizon, LibrePCB, lepton-eda, part libraries, open hardware reference designs, guitar pedal, Eurorack and power-stage collections, and LTspice example circuits) together with the installed KiCad 10, ngspice and LTspice (under Wine). Use when drawing a schematic, laying out a PCB, choosing parts, symbols or footprints, simulating a circuit in ngspice or LTspice, cross-checking an LTspice result on ngspice, extracting results with kicad-cli or .meas, producing fabrication files, or looking for a reference circuit.
 ---
 
 # EDA Library Skill
@@ -642,7 +637,7 @@ Wine (AUR), and spicelib in `~/.local/share/eda-venv`.
 ## Running things
 
 ```bash
-# KiCad extraction, the pattern the owner's next-gen-guitar design uses
+# KiCad extraction, the pattern a per-board workflow uses
 kicad-cli sch erc --output erc.rpt board.kicad_sch
 kicad-cli sch export netlist --output board.net board.kicad_sch
 kicad-cli sch export bom --output bom.csv board.kicad_sch
@@ -691,7 +686,7 @@ sed -i "s|__LIB__|$LIB|g" ~/.pi/agent/skills/eda-library/SKILL.md
 Then replace the bracketed paragraph in "Running things" with what Phases 5 and 6 actually
 showed on this machine. Delete any sentence you could not verify.
 
-Whether `pi` picks up a skill from this directory automatically was not confirmed on the Mac.
+Whether `pi` picks up a skill from this directory automatically was not confirmed.
 Start a new session and check that `eda-library` is listed. If it is not, look at how the other
 skills on the machine are registered and tell the owner.
 
@@ -708,8 +703,7 @@ and a "Not verified" list. Your final reply is a short summary of that file.
 - **Building any tool from source.** The clones are reference copies.
 - **Optional tools:** Freerouting (AUR, needs Java), Qucs-S (AUR), Xyce (AUR, several packages),
   KiBot, InteractiveHtmlBom, SKiDL, atopile. Install when the owner asks.
-- **Carrying the owner's files over.** The owner moves `egkelados`, the Desktop LTspice folder
-  and `next-gen-guitar` themselves; `egkelados` and the Desktop folder are not in git.
+- **Bringing existing projects over.** The owner does that themselves, if at all.
 - **Vendor tools and paid services** (Altium, OrCAD, Ultra Librarian, SnapEDA accounts).
 
 ## Checks behind this recipe (2026-11-17)
@@ -721,9 +715,6 @@ and a "Not verified" list. Your final reply is a short summary of that file.
   two LTspice collections); `git ls-remote` for the KiCad GitLab repos, ngspice, Codeberg and MNT.
 - ngspice's manual page on LTspice/PSpice compatibility mode, KiCad's developer docs on its
   LTspice importer, and Analog's `ltspice-reference` (command-line switches, Wine).
-- On the Mac: KiCad 10.0.0 and LTspice 17.2.4 versions, the KiCad library tables (default only),
-  the LTspice user folders (no added models), and the owner's KiCad and LTspice files listed at
-  the top.
 
 Analog's LTspice product page refused automated requests (HTTP 403); its GitHub
 `ltspice-reference` was read instead. Nothing here was executed on Linux.
